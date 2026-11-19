@@ -1,0 +1,237 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b1120">
+    <title>AI PC Health Monitor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="container">
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">PC</div>
+            <div>
+                <h1>AI PC Health Monitor</h1>
+                <p>Device information dashboard</p>
+            </div>
+        </div>
+        <span class="live"><span></span> BROWSER SCAN</span>
+    </header>
+
+    <section class="welcome">
+        <div>
+            <p class="eyebrow">DEVICE OVERVIEW</p>
+            <h2>Kenali perangkat kamu</h2>
+            <p class="muted">
+                Informasi yang tersedia akan dibaca langsung dari browser
+                pada perangkat yang membuka website ini.
+            </p>
+        </div>
+        <div class="status-box">
+            <span class="muted">Status pemindaian</span>
+            <strong id="scan-status">Memulai...</strong>
+        </div>
+    </section>
+
+    <section class="metrics">
+        <article class="metric-card">
+            <div class="metric-heading">
+                <span class="metric-icon cpu-icon">CPU</span>
+                <span class="muted">Processor</span>
+            </div>
+            <div class="metric-value compact" id="cpu-value">--</div>
+            <p class="metric-label" id="cpu-detail">Memeriksa dukungan browser...</p>
+            <div class="info-note">
+                Jumlah logical processor yang dilaporkan browser.
+                Bukan penggunaan CPU dalam persen.
+            </div>
+        </article>
+
+        <article class="metric-card">
+            <div class="metric-heading">
+                <span class="metric-icon ram-icon">RAM</span>
+                <span class="muted">Memory</span>
+            </div>
+            <div class="metric-value compact" id="ram-value">--</div>
+            <p class="metric-label" id="ram-detail">Memeriksa dukungan browser...</p>
+            <div class="info-note">
+                Jika tersedia, kapasitas RAM hanya perkiraan dari browser.
+            </div>
+        </article>
+
+        <article class="metric-card">
+            <div class="metric-heading">
+                <span class="metric-icon disk-icon">DISK</span>
+                <span class="muted">Storage</span>
+            </div>
+            <div class="metric-value compact" id="disk-value">--</div>
+            <p class="metric-label" id="disk-detail">Memeriksa dukungan browser...</p>
+            <div class="info-note">
+                Kuota penyimpanan website, bukan total kapasitas SSD/HDD.
+            </div>
+        </article>
+    </section>
+
+    <section class="panel">
+        <div>
+            <p class="eyebrow">DEVICE DETAILS</p>
+            <h2>Informasi perangkat</h2>
+            <p class="muted">
+                Informasi tambahan yang bisa disampaikan browser.
+            </p>
+        </div>
+        <div class="details">
+            <div class="detail-row">
+                <span>Sistem / platform browser</span>
+                <strong id="platform-value">Tidak tersedia</strong>
+            </div>
+            <div class="detail-row">
+                <span>Ukuran layar</span>
+                <strong id="screen-value">Tidak tersedia</strong>
+            </div>
+            <div class="detail-row">
+                <span>Bahasa browser</span>
+                <strong id="language-value">Tidak tersedia</strong>
+            </div>
+        </div>
+        <div class="result">
+            <strong>Catatan akurasi</strong>
+            <p>
+                Website ini tidak membaca penggunaan CPU aktual, penggunaan
+                RAM aktual, total kapasitas SSD/HDD, atau suhu hardware.
+                Browser tidak menyediakan akses tersebut secara umum.
+            </p>
+        </div>
+        <button id="scan-button" type="button">Periksa Lagi</button>
+    </section>
+
+    <footer>
+        <span>AI PC Health Monitor</span>
+        <span>Data diproses di browser kamu</span>
+    </footer>
+</main>
+
+<script>
+    function formatBytes(bytes) {
+        if (!Number.isFinite(bytes) || bytes < 0) return "Tidak tersedia";
+
+        const units = ["B", "KB", "MB", "GB", "TB"];
+        let value = bytes;
+        let unit = 0;
+
+        while (value >= 1024 && unit < units.length - 1) {
+            value /= 1024;
+            unit++;
+        }
+
+        return `${value.toFixed(1)} ${units[unit]}`;
+    }
+
+    function setUnsupported(valueId, detailId, message) {
+        document.getElementById(valueId).textContent = "N/A";
+        document.getElementById(detailId).textContent = message;
+    }
+
+    async function scanDevice() {
+        const button = document.getElementById("scan-button");
+        const status = document.getElementById("scan-status");
+
+        button.disabled = true;
+        status.textContent = "Memeriksa...";
+
+        try {
+            // Informasi logical processor yang disediakan browser
+            if (Number.isFinite(navigator.hardwareConcurrency)) {
+                document.getElementById("cpu-value").textContent =
+                    navigator.hardwareConcurrency;
+                document.getElementById("cpu-detail").textContent =
+                    "Logical processor dilaporkan browser";
+            } else {
+                setUnsupported(
+                    "cpu-value",
+                    "cpu-detail",
+                    "Tidak didukung browser ini"
+                );
+            }
+
+            // Perkiraan RAM, jika browser menyediakan Device Memory API
+            if (Number.isFinite(navigator.deviceMemory)) {
+                document.getElementById("ram-value").textContent =
+                    `≈ ${navigator.deviceMemory} GB`;
+                document.getElementById("ram-detail").textContent =
+                    "Perkiraan kapasitas RAM, bukan pemakaian";
+            } else {
+                setUnsupported(
+                    "ram-value",
+                    "ram-detail",
+                    "Browser tidak menyediakan data RAM"
+                );
+            }
+
+            // Storage API hanya memberi kuota website, bukan kapasitas disk
+            if (navigator.storage &&
+                typeof navigator.storage.estimate === "function") {
+                try {
+                    const estimate = await navigator.storage.estimate();
+
+                    if (Number.isFinite(estimate.quota)) {
+                        document.getElementById("disk-value").textContent =
+                            formatBytes(estimate.quota);
+                        document.getElementById("disk-detail").textContent =
+                            "Perkiraan kuota penyimpanan untuk website";
+                    } else {
+                        setUnsupported(
+                            "disk-value",
+                            "disk-detail",
+                            "Kuota website tidak tersedia"
+                        );
+                    }
+                } catch {
+                    setUnsupported(
+                        "disk-value",
+                        "disk-detail",
+                        "Browser tidak mengizinkan pembacaan kuota"
+                    );
+                }
+            } else {
+                setUnsupported(
+                    "disk-value",
+                    "disk-detail",
+                    "Storage API tidak didukung"
+                );
+            }
+
+            // Informasi platform dari browser dapat dibatasi atau disamarkan
+            const platform = navigator.userAgentData?.platform
+                || navigator.platform;
+
+            document.getElementById("platform-value").textContent =
+                platform || "Tidak tersedia";
+
+            document.getElementById("screen-value").textContent =
+                `${screen.width} × ${screen.height} px`;
+
+            document.getElementById("language-value").textContent =
+                navigator.language || "Tidak tersedia";
+
+            status.textContent = "Selesai";
+        } catch (error) {
+            console.error("Pemindaian gagal:", error);
+            status.textContent = "Sebagian data gagal dibaca";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    document.getElementById("scan-button").addEventListener(
+        "click",
+        scanDevice
+    );
+
+    scanDevice();
+</script>
+</body>
+</html>
